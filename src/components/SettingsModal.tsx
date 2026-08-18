@@ -278,7 +278,7 @@ export function SettingsModal() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium">Model</span>
-                    <span className="text-sm text-[rgb(var(--text-secondary))]">gemini-2.0-flash</span>
+                    <span className="text-sm text-[rgb(var(--text-secondary))]">gemini-3.6-flash</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium">API Key</span>
