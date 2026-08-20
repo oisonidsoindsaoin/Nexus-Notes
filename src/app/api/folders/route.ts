@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { folders } from "@/db/schema";
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const result = await db.select().from(folders).orderBy(asc(folders.sortOrder));
+    const email = req.headers.get("x-user-email") || "";
+    const result = await db.select().from(folders).where(eq(folders.userEmail, email)).orderBy(asc(folders.sortOrder));
     return NextResponse.json(result);
   } catch (error) {
     console.error("GET /api/folders error:", error);
@@ -15,10 +16,12 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const email = req.headers.get("x-user-email") || "";
     const body = await req.json();
     const result = await db
       .insert(folders)
       .values({
+        userEmail: email,
         name: body.name || "New Folder",
         color: body.color || "#6366f1",
         icon: body.icon || "📁",

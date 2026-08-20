@@ -52,6 +52,10 @@ export type SidebarView = "notes" | "favorites" | "pinned" | "trash" | "folder" 
 export type Theme = "light" | "dark" | "system";
 
 interface AppState {
+  // Auth
+  userEmail: string | null;
+  setUserEmail: (e: string | null) => void;
+
   // UI
   sidebarOpen: boolean;
   aiPanelOpen: boolean;
@@ -62,33 +66,33 @@ interface AppState {
   selectedTagName: string | null;
   searchQuery: string;
   mobileView: "sidebar" | "editor" | "ai";
-  
+
   // Data
   notes: Note[];
   folders: Folder[];
   currentNoteId: string | null;
-  
+
   // AI
   aiConversations: AIConversation[];
   currentConversationId: string | null;
   aiMessages: AIMessage[];
   aiStreaming: boolean;
   aiNoteContext: boolean;
-  
+
   // Theme
   theme: Theme;
-  
+
   // Sounds
   soundEnabled: boolean;
   typingSoundsEnabled: boolean;
   masterVolume: number;
-  
+
   // Save status
   saveStatus: "idle" | "saving" | "saved" | "error";
-  
+
   // Toasts
   toasts: Toast[];
-  
+
   // Actions
   setSidebarOpen: (open: boolean) => void;
   setAiPanelOpen: (open: boolean) => void;
@@ -99,7 +103,7 @@ interface AppState {
   setSelectedTagName: (name: string | null) => void;
   setSearchQuery: (q: string) => void;
   setMobileView: (view: "sidebar" | "editor" | "ai") => void;
-  
+
   setNotes: (notes: Note[]) => void;
   setFolders: (folders: Folder[]) => void;
   setCurrentNoteId: (id: string | null) => void;
@@ -109,7 +113,7 @@ interface AppState {
   addFolder: (folder: Folder) => void;
   updateFolder: (id: string, data: Partial<Folder>) => void;
   removeFolder: (id: string) => void;
-  
+
   setAiConversations: (convos: AIConversation[]) => void;
   setCurrentConversationId: (id: string | null) => void;
   setAiMessages: (msgs: AIMessage[]) => void;
@@ -119,18 +123,21 @@ interface AppState {
   setAiNoteContext: (c: boolean) => void;
   addAiConversation: (c: AIConversation) => void;
   removeAiConversation: (id: string) => void;
-  
+
   setTheme: (t: Theme) => void;
   setSoundEnabled: (e: boolean) => void;
   setTypingSoundsEnabled: (e: boolean) => void;
   setMasterVolume: (v: number) => void;
   setSaveStatus: (s: "idle" | "saving" | "saved" | "error") => void;
-  
+
   addToast: (t: Omit<Toast, "id">) => void;
   removeToast: (id: string) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
+  userEmail: null,
+  setUserEmail: (e) => set({ userEmail: e }),
+
   sidebarOpen: true,
   aiPanelOpen: false,
   settingsOpen: false,
@@ -140,27 +147,27 @@ export const useAppStore = create<AppState>((set) => ({
   selectedTagName: null,
   searchQuery: "",
   mobileView: "sidebar",
-  
+
   notes: [],
   folders: [],
   currentNoteId: null,
-  
+
   aiConversations: [],
   currentConversationId: null,
   aiMessages: [],
   aiStreaming: false,
   aiNoteContext: true,
-  
-  theme: "system",
-  
+
+  theme: "light",
+
   soundEnabled: true,
   typingSoundsEnabled: false,
   masterVolume: 50,
-  
+
   saveStatus: "idle",
-  
+
   toasts: [],
-  
+
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   setAiPanelOpen: (open) => set({ aiPanelOpen: open }),
   setSettingsOpen: (open) => set({ settingsOpen: open }),
@@ -170,7 +177,7 @@ export const useAppStore = create<AppState>((set) => ({
   setSelectedTagName: (name) => set({ selectedTagName: name }),
   setSearchQuery: (q) => set({ searchQuery: q }),
   setMobileView: (view) => set({ mobileView: view }),
-  
+
   setNotes: (notes) => set({ notes }),
   setFolders: (folders) => set({ folders }),
   setCurrentNoteId: (id) => set({ currentNoteId: id }),
@@ -180,7 +187,7 @@ export const useAppStore = create<AppState>((set) => ({
   addFolder: (folder) => set((s) => ({ folders: [...s.folders, folder] })),
   updateFolder: (id, data) => set((s) => ({ folders: s.folders.map((f) => f.id === id ? { ...f, ...data } : f) })),
   removeFolder: (id) => set((s) => ({ folders: s.folders.filter((f) => f.id !== id) })),
-  
+
   setAiConversations: (convos) => set({ aiConversations: convos }),
   setCurrentConversationId: (id) => set({ currentConversationId: id }),
   setAiMessages: (msgs) => set({ aiMessages: msgs }),
@@ -195,13 +202,13 @@ export const useAppStore = create<AppState>((set) => ({
     aiConversations: s.aiConversations.filter((c) => c.id !== id),
     currentConversationId: s.currentConversationId === id ? null : s.currentConversationId,
   })),
-  
+
   setTheme: (t) => set({ theme: t }),
   setSoundEnabled: (e) => set({ soundEnabled: e }),
   setTypingSoundsEnabled: (e) => set({ typingSoundsEnabled: e }),
   setMasterVolume: (v) => set({ masterVolume: v }),
   setSaveStatus: (s) => set({ saveStatus: s }),
-  
+
   addToast: (t) => set((s) => ({ toasts: [...s.toasts, { ...t, id: Date.now().toString() }] })),
   removeToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 }));

@@ -2,6 +2,7 @@ import { pgTable, text, timestamp, boolean, integer, jsonb, uuid } from "drizzle
 
 export const folders = pgTable("folders", {
   id: uuid("id").primaryKey().defaultRandom(),
+  userEmail: text("user_email").notNull().default(""),
   name: text("name").notNull(),
   color: text("color").default("#6366f1"),
   icon: text("icon").default("📁"),
@@ -12,6 +13,7 @@ export const folders = pgTable("folders", {
 
 export const notes = pgTable("notes", {
   id: uuid("id").primaryKey().defaultRandom(),
+  userEmail: text("user_email").notNull().default(""),
   title: text("title").notNull().default("Untitled"),
   content: text("content").default(""),
   folderId: uuid("folder_id").references(() => folders.id, { onDelete: "set null" }),
@@ -36,6 +38,7 @@ export const noteVersions = pgTable("note_versions", {
 
 export const aiConversations = pgTable("ai_conversations", {
   id: uuid("id").primaryKey().defaultRandom(),
+  userEmail: text("user_email").notNull().default(""),
   title: text("title").notNull().default("New Conversation"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -44,7 +47,7 @@ export const aiConversations = pgTable("ai_conversations", {
 export const aiMessages = pgTable("ai_messages", {
   id: uuid("id").primaryKey().defaultRandom(),
   conversationId: uuid("conversation_id").references(() => aiConversations.id, { onDelete: "cascade" }).notNull(),
-  role: text("role").notNull(), // 'user' | 'assistant'
+  role: text("role").notNull(),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -55,13 +58,14 @@ export const attachments = pgTable("attachments", {
   filename: text("filename").notNull(),
   mimeType: text("mime_type").notNull(),
   size: integer("size").notNull(),
-  data: text("data").notNull(), // base64 encoded
+  data: text("data").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const userSettings = pgTable("user_settings", {
   id: uuid("id").primaryKey().defaultRandom(),
-  key: text("key").notNull().unique(),
+  userEmail: text("user_email").notNull().default(""),
+  key: text("key").notNull(),
   value: jsonb("value"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

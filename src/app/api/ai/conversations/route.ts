@@ -1,13 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { aiConversations } from "@/db/schema";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const email = req.headers.get("x-user-email") || "";
     const result = await db
       .select()
       .from(aiConversations)
+      .where(eq(aiConversations.userEmail, email))
       .orderBy(desc(aiConversations.updatedAt));
     return NextResponse.json(result);
   } catch (error) {

@@ -14,37 +14,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const email = req.headers.get("x-user-email") || "";
     const body = await req.json();
     const { message, conversationId, noteContext, selectedText } = body;
 
     let convoId = conversationId;
 
-    // Create conversation if needed
     if (!convoId) {
       const newConvo = await db
         .insert(aiConversations)
-        .values({ title: message.substring(0, 60) || "New Conversation" })
+        .values({ userEmail: email, title: message.substring(0, 60) || "New Conversation" })
         .returning();
       convoId = newConvo[0].id;
     }
 
-    // Save user message
     await db.insert(aiMessages).values({
       conversationId: convoId,
       role: "user",
       content: message,
     });
 
-    // Get conversation history
     const history = await db
       .select()
       .from(aiMessages)
       .where(eq(aiMessages.conversationId, convoId))
       .orderBy(aiMessages.createdAt);
 
-    // Build Gemini request
     const systemInstruction = buildSystemPrompt(noteContext, selectedText);
-    
+
     const contents = history.map((m) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content }],
@@ -81,7 +78,6 @@ export async function POST(req: NextRequest) {
       geminiData.candidates?.[0]?.content?.parts?.[0]?.text ||
       "I couldn't generate a response. Please try again.";
 
-    // Save assistant message
     const savedMsg = await db
       .insert(aiMessages)
       .values({
@@ -91,7 +87,6 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
-    // Update conversation title if it's a new one
     if (!conversationId) {
       await db
         .update(aiConversations)
@@ -113,25 +108,14 @@ export async function POST(req: NextRequest) {
 }
 
 function buildSystemPrompt(noteContext?: string, selectedText?: string): string {
-  let prompt = `You are an intelligent AI assistant integrated into a premium notes application called "Nexus Notes". You help users with:
-- Writing and improving content
-- Answering questions
-- Brainstorming and planning
-- Creating study materials
-- Summarizing and explaining
-- Coding help
-- Research and analysis
-
-Be concise, helpful, and conversational. Use markdown formatting when it improves readability. 
-Follow the user's instructions carefully - if they ask you to wait before responding with content, respect that.
-Be direct and avoid unnecessary preamble.`;
+  let prompt = `You are a friendly, warm AI assistant built into a notes app called "Nexus Notes". You help people with anything they need — writing, ideas, planning, studying, coding, or just chatting. Be natural and conversational, like a helpful friend. Use markdown when it helps readability. Follow the user's instructions carefully.`;
 
   if (noteContext) {
-    prompt += `\n\nThe user is currently viewing a note with this content:\n---\n${noteContext}\n---\nYou can reference this content when the user asks about "this note" or similar phrases.`;
+    prompt += `\n\nThe user is looking at this note:\n---\n${noteContext}\n---\nRefer to it when they ask about "this note" or similar.`;
   }
 
   if (selectedText) {
-    prompt += `\n\nThe user has selected this specific text:\n---\n${selectedText}\n---\nFocus on this selected text when the user asks to improve, rewrite, explain, etc.`;
+    prompt += `\n\nThe user selected this text:\n---\n${selectedText}\n---\nFocus on this when they ask to improve, rewrite, explain, etc.`;
   }
 
   return prompt;

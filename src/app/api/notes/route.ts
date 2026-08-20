@@ -6,6 +6,7 @@ import { desc, eq, and, or, ilike, sql } from "drizzle-orm";
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
+    const email = req.headers.get("x-user-email") || "";
     const search = url.searchParams.get("search") || "";
     const folderId = url.searchParams.get("folderId");
     const tag = url.searchParams.get("tag");
@@ -14,6 +15,7 @@ export async function GET(req: NextRequest) {
     const deleted = url.searchParams.get("deleted");
 
     const conditions = [];
+    conditions.push(eq(notes.userEmail, email));
 
     if (deleted === "true") {
       conditions.push(eq(notes.isDeleted, true));
@@ -21,17 +23,9 @@ export async function GET(req: NextRequest) {
       conditions.push(eq(notes.isDeleted, false));
     }
 
-    if (folderId) {
-      conditions.push(eq(notes.folderId, folderId));
-    }
-
-    if (favorites === "true") {
-      conditions.push(eq(notes.isFavorite, true));
-    }
-
-    if (pinned === "true") {
-      conditions.push(eq(notes.isPinned, true));
-    }
+    if (folderId) conditions.push(eq(notes.folderId, folderId));
+    if (favorites === "true") conditions.push(eq(notes.isFavorite, true));
+    if (pinned === "true") conditions.push(eq(notes.isPinned, true));
 
     if (search) {
       conditions.push(
@@ -61,10 +55,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const email = req.headers.get("x-user-email") || "";
     const body = await req.json();
     const result = await db
       .insert(notes)
       .values({
+        userEmail: email,
         title: body.title || "Untitled",
         content: body.content || "",
         folderId: body.folderId || null,
