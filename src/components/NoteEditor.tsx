@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useAppStore, type Note } from "@/lib/store";
 import { playSave, playClick, playDelete } from "@/lib/sounds";
 import { formatDistanceToNow, format } from "date-fns";
+import { MarkdownView, toggleTaskLine } from "@/lib/markdown";
 
 const AUTOSAVE_DELAY = 1500;
 
@@ -58,6 +59,7 @@ export function NoteEditor() {
   const [versions, setVersions] = useState<NoteVersion[]>([]);
   const [attachmentsList, setAttachmentsList] = useState<AttachmentMeta[]>([]);
   const [showExport, setShowExport] = useState(false);
+  const [viewMode, setViewMode] = useState<"write" | "preview">("write");
 
   // Lightbox / Image Viewer state
   const [viewingImage, setViewingImage] = useState<{ url: string; filename?: string; size?: number; attachmentId?: string } | null>(null);
@@ -274,6 +276,28 @@ export function NoteEditor() {
     setTimeout(() => { ta.focus(); ta.setSelectionRange(start + before.length, start + before.length + selected.length); }, 10);
   }
 
+  // Clicking a checkbox in Preview flips it in the markdown source and saves.
+  function handleToggleTask(lineIndex: number) {
+    const next = toggleTaskLine(content, lineIndex);
+    if (next === content) return;
+    if (soundEnabled) playClick(vol);
+    setContent(next);
+    saveNote({ title, content: next });
+  }
+
+  // Desktop shortcuts inside the editor
+  function handleEditorKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    const mod = e.metaKey || e.ctrlKey;
+    if (!mod) return;
+    const k = e.key.toLowerCase();
+    if (k === "b") { e.preventDefault(); insertFormat("**", "**"); }
+    else if (k === "i") { e.preventDefault(); insertFormat("*", "*"); }
+    else if (k === "u") { e.preventDefault(); insertFormat("++", "++"); }
+    else if (k === "e") { e.preventDefault(); insertFormat("`", "`"); }
+    else if (k === "h") { e.preventDefault(); insertFormat("==", "=="); }
+    else if (k === "k") { /* handled globally by command palette */ }
+  }
+
   function formatSize(bytes: number) {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -320,15 +344,38 @@ export function NoteEditor() {
           <button onClick={() => { setSidebarOpen(!sidebarOpen); setMobileView("sidebar"); }} className="p-2 rounded-xl text-[rgb(var(--text-secondary))] hover:bg-[rgb(var(--bg))] transition-colors md:hidden">
             <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
           </button>
-          <div className="hidden sm:flex items-center gap-0.5 border-r border-[rgb(var(--border))] pr-2 mr-1">
-            <button onClick={() => insertFormat("**", "**")} className="p-1.5 rounded-lg text-xs font-bold hover:bg-[rgb(var(--bg))] transition-colors" title="Bold">B</button>
-            <button onClick={() => insertFormat("*", "*")} className="p-1.5 rounded-lg text-xs italic hover:bg-[rgb(var(--bg))] transition-colors" title="Italic">I</button>
-            <button onClick={() => insertFormat("## ")} className="p-1.5 rounded-lg text-xs font-bold hover:bg-[rgb(var(--bg))] transition-colors" title="Heading">H</button>
-            <button onClick={() => insertFormat("- ")} className="p-1.5 rounded-lg text-xs hover:bg-[rgb(var(--bg))] transition-colors" title="List">•</button>
-            <button onClick={() => insertFormat("- [ ] ")} className="p-1.5 rounded-lg text-xs hover:bg-[rgb(var(--bg))] transition-colors" title="Checklist">☐</button>
-            <button onClick={() => insertFormat("> ")} className="p-1.5 rounded-lg text-xs hover:bg-[rgb(var(--bg))] transition-colors" title="Quote">❝</button>
-            <button onClick={() => insertFormat("```\n", "\n```")} className="p-1.5 rounded-lg text-xs hover:bg-[rgb(var(--bg))] transition-colors font-mono" title="Code">&lt;/&gt;</button>
+          {/* Write / Preview toggle */}
+          <div className="flex items-center bg-[rgb(var(--bg))] rounded-xl p-0.5 mr-2 border border-[rgb(var(--border))]">
+            <button
+              onClick={() => { if (soundEnabled) playClick(vol); setViewMode("write"); }}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${viewMode === "write" ? "bg-[rgb(var(--card-bg))] shadow-sm text-[rgb(var(--text))]" : "text-[rgb(var(--text-secondary))]"}`}
+              title="Write in Markdown"
+            >✏️<span className="hidden md:inline ml-1">Write</span></button>
+            <button
+              onClick={() => { if (soundEnabled) playClick(vol); setViewMode("preview"); }}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${viewMode === "preview" ? "bg-[rgb(var(--card-bg))] shadow-sm text-[rgb(var(--accent))]" : "text-[rgb(var(--text-secondary))]"}`}
+              title="See formatted result"
+            >👁️<span className="hidden md:inline ml-1">Preview</span></button>
           </div>
+
+          {viewMode === "write" && (
+            <div className="hidden sm:flex items-center gap-0.5 border-r border-[rgb(var(--border))] pr-2 mr-1">
+              <button onClick={() => insertFormat("**", "**")} className="p-1.5 rounded-lg text-xs font-bold hover:bg-[rgb(var(--bg))] transition-colors" title="Bold (⌘B)">B</button>
+              <button onClick={() => insertFormat("*", "*")} className="p-1.5 rounded-lg text-xs italic hover:bg-[rgb(var(--bg))] transition-colors" title="Italic (⌘I)">I</button>
+              <button onClick={() => insertFormat("++", "++")} className="p-1.5 rounded-lg text-xs underline hover:bg-[rgb(var(--bg))] transition-colors" title="Underline (⌘U)">U</button>
+              <button onClick={() => insertFormat("~~", "~~")} className="p-1.5 rounded-lg text-xs line-through hover:bg-[rgb(var(--bg))] transition-colors" title="Strikethrough">S</button>
+              <button onClick={() => insertFormat("==", "==")} className="p-1.5 rounded-lg text-xs hover:bg-[rgb(var(--bg))] transition-colors" title="Highlight (⌘H)">🖍️</button>
+              <button onClick={() => insertFormat("## ")} className="p-1.5 rounded-lg text-xs font-bold hover:bg-[rgb(var(--bg))] transition-colors" title="Heading">H</button>
+              <button onClick={() => insertFormat("- ")} className="p-1.5 rounded-lg text-xs hover:bg-[rgb(var(--bg))] transition-colors" title="Bullet list">•</button>
+              <button onClick={() => insertFormat("1. ")} className="p-1.5 rounded-lg text-xs hover:bg-[rgb(var(--bg))] transition-colors" title="Numbered list">1.</button>
+              <button onClick={() => insertFormat("- [ ] ")} className="p-1.5 rounded-lg text-xs hover:bg-[rgb(var(--bg))] transition-colors" title="Checklist">☐</button>
+              <button onClick={() => insertFormat("> ")} className="p-1.5 rounded-lg text-xs hover:bg-[rgb(var(--bg))] transition-colors" title="Quote">❝</button>
+              <button onClick={() => insertFormat("`", "`")} className="p-1.5 rounded-lg text-xs hover:bg-[rgb(var(--bg))] transition-colors font-mono" title="Inline code (⌘E)">`</button>
+              <button onClick={() => insertFormat("```\n", "\n```")} className="p-1.5 rounded-lg text-xs hover:bg-[rgb(var(--bg))] transition-colors font-mono" title="Code block">&lt;/&gt;</button>
+              <button onClick={() => insertFormat("[", "](https://)")} className="p-1.5 rounded-lg text-xs hover:bg-[rgb(var(--bg))] transition-colors" title="Link">🔗</button>
+              <button onClick={() => insertFormat("\n---\n")} className="p-1.5 rounded-lg text-xs hover:bg-[rgb(var(--bg))] transition-colors" title="Divider">—</button>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-0.5">
@@ -597,13 +644,20 @@ export function NoteEditor() {
             <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addTag()} placeholder="+ tag" className="w-16 px-2 py-1 text-xs bg-transparent focus:outline-none focus:w-28 transition-all placeholder:text-[rgb(var(--text-secondary))]/40" />
           </div>
 
-          <textarea
-            ref={contentRef}
-            value={content}
-            onChange={(e) => handleContentChange(e.target.value)}
-            placeholder="Start writing your thoughts..."
-            className="w-full min-h-[400px] bg-transparent resize-none focus:outline-none text-base leading-[1.8] placeholder:text-[rgb(var(--text-secondary))]/30"
-          />
+          {viewMode === "write" ? (
+            <textarea
+              ref={contentRef}
+              value={content}
+              onChange={(e) => handleContentChange(e.target.value)}
+              onKeyDown={handleEditorKeyDown}
+              placeholder="Start writing your thoughts...  (Markdown works — tap 👁️ Preview to see it formatted)"
+              className="w-full min-h-[400px] bg-transparent resize-none focus:outline-none text-base leading-[1.8] placeholder:text-[rgb(var(--text-secondary))]/30 font-mono text-[15px]"
+            />
+          ) : (
+            <div className="min-h-[400px] text-base">
+              <MarkdownView content={content} onToggleTask={handleToggleTask} />
+            </div>
+          )}
 
           {/* Attachments Section */}
           {attachmentsList.length > 0 && (

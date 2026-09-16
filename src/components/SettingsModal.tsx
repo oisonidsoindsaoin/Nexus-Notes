@@ -4,6 +4,24 @@ import { useState } from "react";
 import { useAppStore, type Theme } from "@/lib/store";
 import { playClick, playSave, playNotification, playAiComplete, playType, playToggle } from "@/lib/sounds";
 import { saveSetting, applyPresetVars, clearPresetVars, type ThemePreset } from "@/lib/settings";
+import { MarkdownView } from "@/lib/markdown";
+
+const MARKDOWN_EXAMPLES: { label: string; src: string }[] = [
+  { label: "Bold", src: "**Important idea**" },
+  { label: "Italic", src: "*A softer note*" },
+  { label: "Underline", src: "++Underlined++" },
+  { label: "Strikethrough", src: "~~Done with this~~" },
+  { label: "Highlight", src: "==Remember this==" },
+  { label: "Heading", src: "## My Heading" },
+  { label: "Bullet list", src: "- Milk\n- Eggs" },
+  { label: "Numbered list", src: "1. Wake up\n2. Study" },
+  { label: "Checklist", src: "- [x] Finish website\n- [ ] Study" },
+  { label: "Quote", src: "> Keep it simple." },
+  { label: "Inline code", src: "Run `npm start`" },
+  { label: "Code block", src: "```js\nconst a = 1;\n```" },
+  { label: "Link", src: "[Open Google](https://google.com)" },
+  { label: "Divider", src: "---" },
+];
 
 const THEME_PRESETS: ThemePreset[] = [
   { name: "Midnight", accent: "129 140 248", bg: "15 23 42", sidebar: "30 41 59", card: "30 41 59", text: "248 250 252", border: "51 65 85" },
@@ -169,10 +187,43 @@ export function SettingsModal() {
 
             {activeSection === "Editor" && (
               <>
-                <SectionTitle title="Markdown Reference" />
+                <div className="bg-[rgb(var(--accent))]/10 border border-[rgb(var(--accent))]/25 rounded-xl p-3.5 text-xs leading-relaxed">
+                  <p className="font-semibold text-[rgb(var(--accent))] mb-1">👁️ How formatting works</p>
+                  <p className="text-[rgb(var(--text-secondary))]">
+                    Type the syntax below while in <strong>Write</strong> mode, then tap the{" "}
+                    <strong>👁️ Preview</strong> toggle at the top of your note to see it fully formatted.
+                    Checkboxes are clickable in Preview and save instantly.
+                  </p>
+                </div>
+
+                <SectionTitle title="Markdown Reference — Live" />
+                <p className="text-xs text-[rgb(var(--text-secondary))] -mt-2">
+                  Left is what you type · Right is the real rendered result.
+                </p>
+
+                <div className="rounded-xl border border-[rgb(var(--border))] overflow-hidden divide-y divide-[rgb(var(--border))]">
+                  {MARKDOWN_EXAMPLES.map(({ label, src }) => (
+                    <div key={label} className="grid grid-cols-2 gap-3 p-3 items-center">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold text-[rgb(var(--text-secondary))] uppercase tracking-wider mb-1">{label}</p>
+                        <code className="block text-[11px] font-mono bg-[rgb(var(--bg))] border border-[rgb(var(--border))] rounded-lg px-2 py-1.5 whitespace-pre-wrap break-words">
+                          {src}
+                        </code>
+                      </div>
+                      <div className="min-w-0 text-sm [&_*:first-child]:mt-0 [&_*:last-child]:mb-0">
+                        <MarkdownView content={src} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <SectionTitle title="Editor Shortcuts" />
                 <div className="bg-[rgb(var(--bg))] rounded-xl p-4 space-y-2.5 text-sm">
-                  {[["Bold", "**text**"], ["Italic", "*text*"], ["Heading", "## Heading"], ["Bullet", "- item"], ["Checklist", "- [ ] task"], ["Quote", "> quote"], ["Code", "```code```"], ["Link", "[text](url)"]].map(([k, v]) => (
-                    <div key={k} className="flex justify-between items-center"><span>{k}</span><kbd className="px-2 py-0.5 bg-[rgb(var(--card-bg))] border border-[rgb(var(--border))] rounded text-xs font-mono">{v}</kbd></div>
+                  {[["Bold", "⌘ B"], ["Italic", "⌘ I"], ["Underline", "⌘ U"], ["Inline code", "⌘ E"], ["Highlight", "⌘ H"]].map(([k, v]) => (
+                    <div key={k} className="flex justify-between items-center">
+                      <span>{k}</span>
+                      <kbd className="px-2 py-1 bg-[rgb(var(--card-bg))] border border-[rgb(var(--border))] rounded text-xs font-mono">{v}</kbd>
+                    </div>
                   ))}
                 </div>
               </>
