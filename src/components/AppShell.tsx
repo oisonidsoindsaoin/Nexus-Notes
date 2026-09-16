@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback, useState } from "react";
 import { useAppStore } from "@/lib/store";
+import { loadSettings, applyPresetVars } from "@/lib/settings";
 import { LoginScreen } from "./LoginScreen";
 import { Sidebar } from "./Sidebar";
 import { NoteEditor } from "./NoteEditor";
@@ -17,15 +18,35 @@ export function AppShell() {
     setNotes, setFolders, setAiConversations, theme,
     mobileView, setMobileView,
     setCommandPaletteOpen, setSettingsOpen, setAiPanelOpen, setSidebarOpen,
+    setTheme, setSoundEnabled, setTypingSoundsEnabled, setMasterVolume, setAiNoteContext,
   } = useAppStore();
 
   const [isMobile, setIsMobile] = useState(false);
+  const [, setSettingsLoaded] = useState(false);
 
   // Check for saved email
   useEffect(() => {
     const saved = localStorage.getItem("nexus-email");
     if (saved) setUserEmail(saved);
   }, [setUserEmail]);
+
+  // Load saved settings as soon as we know who the user is
+  useEffect(() => {
+    if (!userEmail) return;
+    let cancelled = false;
+    (async () => {
+      const s = await loadSettings(userEmail);
+      if (cancelled) return;
+      if (s.theme) setTheme(s.theme);
+      if (s.themePreset) applyPresetVars(s.themePreset);
+      if (typeof s.soundEnabled === "boolean") setSoundEnabled(s.soundEnabled);
+      if (typeof s.typingSoundsEnabled === "boolean") setTypingSoundsEnabled(s.typingSoundsEnabled);
+      if (typeof s.masterVolume === "number") setMasterVolume(s.masterVolume);
+      if (typeof s.aiNoteContext === "boolean") setAiNoteContext(s.aiNoteContext);
+      setSettingsLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, [userEmail, setTheme, setSoundEnabled, setTypingSoundsEnabled, setMasterVolume, setAiNoteContext]);
 
   // Load data when logged in
   useEffect(() => {

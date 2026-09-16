@@ -6,8 +6,22 @@ import { playSave, playClick, playDelete } from "@/lib/sounds";
 import { formatDistanceToNow, format } from "date-fns";
 
 const AUTOSAVE_DELAY = 1500;
-const NOTE_COLORS = [null, "#ef4444", "#f97316", "#f59e0b", "#84cc16", "#22c55e", "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6", "#ec4899", "#f43f5e"];
-const EMOJI_ICONS = ["📝", "📄", "📋", "📓", "📒", "📕", "📗", "📘", "📙", "💡", "🎯", "🚀", "⭐", "🔥", "💻", "🎓", "🧪", "🎨", "🎵", "📸"];
+const COLOR_GROUPS: { label: string; colors: string[] }[] = [
+  { label: "Reds & Pinks", colors: ["#ef4444", "#dc2626", "#f43f5e", "#ec4899", "#db2777", "#be185d"] },
+  { label: "Oranges & Yellows", colors: ["#f97316", "#ea580c", "#f59e0b", "#d97706", "#eab308", "#facc15"] },
+  { label: "Greens", colors: ["#84cc16", "#65a30d", "#22c55e", "#16a34a", "#10b981", "#059669"] },
+  { label: "Blues & Teals", colors: ["#14b8a6", "#06b6d4", "#0ea5e9", "#3b82f6", "#2563eb", "#1d4ed8"] },
+  { label: "Purples", colors: ["#6366f1", "#7c3aed", "#8b5cf6", "#a855f7", "#c026d3", "#9333ea"] },
+  { label: "Neutrals", colors: ["#78716c", "#57534e", "#64748b", "#475569", "#334155", "#1e293b"] },
+];
+
+const EMOJI_GROUPS: { label: string; emojis: string[] }[] = [
+  { label: "Notes & Docs", emojis: ["📝", "📄", "📋", "📓", "📒", "📕", "📗", "📘", "📙", "📔", "📚", "🗒️", "🗂️", "📑", "🔖", "📜"] },
+  { label: "Work & School", emojis: ["💼", "🎓", "🏫", "📊", "📈", "📉", "🗓️", "⏰", "📌", "📎", "✏️", "🖊️", "🧮", "🔬", "🧪", "⚗️"] },
+  { label: "Ideas & Goals", emojis: ["💡", "🎯", "🚀", "⭐", "🌟", "✨", "🔥", "⚡", "🏆", "🥇", "🧠", "💭", "🗝️", "🧩", "🎲", "🔮"] },
+  { label: "Life & Fun", emojis: ["❤️", "💛", "🏠", "🌱", "🌍", "☀️", "🌙", "🍕", "☕", "🎵", "🎨", "🎮", "✈️", "🏖️", "🛒", "🐾"] },
+  { label: "Tech & Code", emojis: ["💻", "🖥️", "📱", "⌨️", "🖱️", "💾", "🔌", "🛠️", "⚙️", "🐛", "🤖", "🔗", "🌐", "🔒", "📡", "🧰"] },
+];
 
 interface NoteVersion { id: string; noteId: string; title: string; content: string; createdAt: string; }
 interface AttachmentMeta { id: string; noteId: string; filename: string; mimeType: string; size: number; createdAt: string; }
@@ -223,19 +237,80 @@ export function NoteEditor() {
               <div className="w-4 h-4 rounded-full border-2" style={currentNote.color ? { backgroundColor: currentNote.color, borderColor: currentNote.color } : { borderColor: "rgb(var(--border))" }} />
             </button>
             {showColorPicker && (
-              <div className="absolute right-0 top-full mt-1 p-2.5 bg-[rgb(var(--card-bg))] border border-[rgb(var(--border))] rounded-xl shadow-xl z-50 animate-fade-in">
-                <div className="grid grid-cols-6 gap-2">{NOTE_COLORS.map((c, i) => (
-                  <button key={i} onClick={() => setNoteColor(c)} className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${currentNote.color === c ? "ring-2 ring-[rgb(var(--accent))] ring-offset-2" : ""}`} style={{ backgroundColor: c || "transparent", borderColor: c || "rgb(var(--border))" }}>{!c && <span className="text-xs">✕</span>}</button>
-                ))}</div>
-              </div>
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowColorPicker(false)} />
+                <div className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-auto sm:top-full bottom-3 sm:bottom-auto sm:mt-2 sm:w-80 p-4 bg-[rgb(var(--card-bg))] border border-[rgb(var(--border))] rounded-2xl shadow-2xl z-50 animate-fade-in max-h-[70vh] overflow-y-auto">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-bold">Note Color</h3>
+                    <button onClick={() => setShowColorPicker(false)} className="p-1 rounded-lg hover:bg-[rgb(var(--bg))] text-[rgb(var(--text-secondary))]">✕</button>
+                  </div>
+
+                  <button onClick={() => setNoteColor(null)} className={`w-full flex items-center gap-2.5 px-3 py-2.5 mb-3 rounded-xl border transition-colors ${!currentNote.color ? "border-[rgb(var(--accent))] bg-[rgb(var(--accent))]/10 text-[rgb(var(--accent))] font-semibold" : "border-[rgb(var(--border))] hover:bg-[rgb(var(--bg))]"}`}>
+                    <span className="w-6 h-6 rounded-full border-2 border-dashed border-current flex items-center justify-center text-[10px]">✕</span>
+                    <span className="text-sm">No color</span>
+                  </button>
+
+                  {COLOR_GROUPS.map((group) => (
+                    <div key={group.label} className="mb-3 last:mb-0">
+                      <p className="text-[10px] font-semibold text-[rgb(var(--text-secondary))] uppercase tracking-wider mb-2">{group.label}</p>
+                      <div className="grid grid-cols-6 gap-2.5">
+                        {group.colors.map((c) => (
+                          <button
+                            key={c}
+                            onClick={() => setNoteColor(c)}
+                            aria-label={`Color ${c}`}
+                            className={`w-9 h-9 rounded-full transition-transform hover:scale-110 active:scale-95 flex items-center justify-center ${currentNote.color === c ? "ring-2 ring-offset-2 ring-[rgb(var(--accent))] ring-offset-[rgb(var(--card-bg))]" : ""}`}
+                            style={{ backgroundColor: c }}
+                          >
+                            {currentNote.color === c && <span className="text-white text-xs font-bold">✓</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="mt-3 pt-3 border-t border-[rgb(var(--border))]">
+                    <p className="text-[10px] font-semibold text-[rgb(var(--text-secondary))] uppercase tracking-wider mb-2">Custom color</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={currentNote.color || "#6366f1"}
+                        onChange={(e) => setNoteColor(e.target.value)}
+                        className="w-12 h-10 rounded-lg border border-[rgb(var(--border))] bg-transparent cursor-pointer"
+                      />
+                      <span className="text-xs text-[rgb(var(--text-secondary))]">Pick any color you like</span>
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
           </div>
           <div className="relative">
             <button onClick={() => setShowIconPicker(!showIconPicker)} className="p-1.5 rounded-xl hover:bg-[rgb(var(--bg))] transition-colors">{currentNote.icon}</button>
             {showIconPicker && (
-              <div className="absolute right-0 top-full mt-1 p-2 bg-[rgb(var(--card-bg))] border border-[rgb(var(--border))] rounded-xl shadow-xl z-50 animate-fade-in">
-                <div className="grid grid-cols-5 gap-1">{EMOJI_ICONS.map((e) => (<button key={e} onClick={() => setNoteIcon(e)} className="w-8 h-8 rounded-lg hover:bg-[rgb(var(--bg))] transition-colors text-lg flex items-center justify-center">{e}</button>))}</div>
-              </div>
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowIconPicker(false)} />
+                <div className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-auto sm:top-full bottom-3 sm:bottom-auto sm:mt-2 sm:w-80 p-4 bg-[rgb(var(--card-bg))] border border-[rgb(var(--border))] rounded-2xl shadow-2xl z-50 animate-fade-in max-h-[70vh] overflow-y-auto">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-bold">Note Icon</h3>
+                    <button onClick={() => setShowIconPicker(false)} className="p-1 rounded-lg hover:bg-[rgb(var(--bg))] text-[rgb(var(--text-secondary))]">✕</button>
+                  </div>
+                  {EMOJI_GROUPS.map((group) => (
+                    <div key={group.label} className="mb-3 last:mb-0">
+                      <p className="text-[10px] font-semibold text-[rgb(var(--text-secondary))] uppercase tracking-wider mb-2">{group.label}</p>
+                      <div className="grid grid-cols-8 gap-1.5">
+                        {group.emojis.map((e) => (
+                          <button
+                            key={e}
+                            onClick={() => setNoteIcon(e)}
+                            className={`w-9 h-9 rounded-xl transition-all hover:scale-110 active:scale-95 text-xl flex items-center justify-center ${currentNote.icon === e ? "bg-[rgb(var(--accent))]/15 ring-2 ring-[rgb(var(--accent))]" : "hover:bg-[rgb(var(--bg))]"}`}
+                          >{e}</button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
           <div className="relative">

@@ -32,12 +32,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
+    // Only allow known columns, and coerce timestamps to Date objects
+    const allowed = ["title", "content", "folderId", "tags", "isFavorite", "isPinned", "isDeleted", "color", "icon"] as const;
+    const updates: Record<string, unknown> = {};
+    for (const key of allowed) {
+      if (body[key] !== undefined) updates[key] = body[key];
+    }
+    if (body.deletedAt !== undefined) {
+      updates.deletedAt = body.deletedAt ? new Date(body.deletedAt) : null;
+    }
+    updates.updatedAt = new Date();
+
     const result = await db
       .update(notes)
-      .set({
-        ...body,
-        updatedAt: new Date(),
-      })
+      .set(updates)
       .where(eq(notes.id, id))
       .returning();
 
