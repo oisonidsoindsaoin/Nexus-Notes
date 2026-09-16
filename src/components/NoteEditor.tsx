@@ -13,7 +13,7 @@ interface NoteVersion { id: string; noteId: string; title: string; content: stri
 interface AttachmentMeta { id: string; noteId: string; filename: string; mimeType: string; size: number; createdAt: string; }
 
 export function NoteEditor() {
-  const { userEmail, currentNoteId, notes, updateNote, setCurrentNoteId, setNotes, setSaveStatus, saveStatus, addToast, soundEnabled, masterVolume, sidebarOpen, setSidebarOpen, setAiPanelOpen, aiPanelOpen, folders, setMobileView } = useAppStore();
+  const { userEmail, currentNoteId, notes, updateNote, setCurrentNoteId, setNotes, setSaveStatus, saveStatus, addToast, soundEnabled, masterVolume, sidebarOpen, setSidebarOpen, setAiPanelOpen, aiPanelOpen, folders, setMobileView, noteInsertRequest, setNoteInsertRequest } = useAppStore();
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -45,6 +45,16 @@ export function NoteEditor() {
   async function loadAttachments(noteId: string) {
     try { const res = await fetch(`/api/attachments?noteId=${noteId}`); if (res.ok) setAttachmentsList(await res.json()); } catch { /* */ }
   }
+
+  // Apply text sent from the AI panel
+  useEffect(() => {
+    if (!noteInsertRequest || !currentNoteId) return;
+    const clean = noteInsertRequest.text.trim();
+    const next = noteInsertRequest.mode === "replace" ? clean : (content ? `${content}\n\n${clean}` : clean);
+    setContent(next);
+    saveNote({ title, content: next });
+    setNoteInsertRequest(null);
+  }, [noteInsertRequest]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveNote = useCallback(async (updates: Partial<Note>) => {
     if (!currentNoteId) return;

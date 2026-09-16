@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { LoginScreen } from "./LoginScreen";
 import { Sidebar } from "./Sidebar";
@@ -18,6 +18,8 @@ export function AppShell() {
     mobileView, setMobileView,
     setCommandPaletteOpen, setSettingsOpen, setAiPanelOpen, setSidebarOpen,
   } = useAppStore();
+
+  const [isMobile, setIsMobile] = useState(false);
 
   // Check for saved email
   useEffect(() => {
@@ -78,25 +80,40 @@ export function AppShell() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  // Detect mobile
+  // Detect mobile — only react to real breakpoint changes, NOT keyboard resizes
   useEffect(() => {
-    const checkMobile = () => {
-      const isMobile = window.innerWidth < 768;
-      if (isMobile) { setSidebarOpen(false); setAiPanelOpen(false); }
+    const mq = window.matchMedia("(max-width: 767px)");
+
+    const apply = (matches: boolean) => {
+      setIsMobile(matches);
+      if (matches) { setSidebarOpen(false); setAiPanelOpen(false); }
       else { setSidebarOpen(true); }
     };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, [setSidebarOpen, setAiPanelOpen]);
+
+    apply(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => apply(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [setSidebarOpen, setAiPanelOpen, setIsMobile]);
+
+  // Keep layout above the on-screen keyboard (iOS/Android)
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      document.documentElement.style.setProperty("--app-h", `${vv.height}px`);
+    };
+    onResize();
+    vv.addEventListener("resize", onResize);
+    vv.addEventListener("scroll", onResize);
+    return () => { vv.removeEventListener("resize", onResize); vv.removeEventListener("scroll", onResize); };
+  }, []);
 
   // Show login if no email
   if (!userEmail) return <LoginScreen />;
 
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-
   return (
-    <div className="h-screen flex flex-col bg-[rgb(var(--bg))]">
+    <div className="app-h flex flex-col bg-[rgb(var(--bg))] overflow-hidden">
       {/* Mobile nav */}
       <div className="md:hidden flex items-center justify-between px-4 py-2.5 border-b border-[rgb(var(--border))] bg-[rgb(var(--sidebar-bg))]">
         <button
@@ -130,7 +147,7 @@ export function AppShell() {
         {sidebarOpen && (
           <>
             {isMobile && <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
-            <div className={`${isMobile ? "fixed inset-y-0 left-0 z-50 w-72" : "w-[270px] flex-shrink-0"} bg-[rgb(var(--sidebar-bg))] border-r border-[rgb(var(--border))] animate-slide-left`}>
+            <div className={`${isMobile ? "fixed top-0 left-0 z-50 w-72 app-h" : "w-[270px] flex-shrink-0"} bg-[rgb(var(--sidebar-bg))] border-r border-[rgb(var(--border))] animate-slide-left`}>
               <Sidebar />
             </div>
           </>
@@ -143,7 +160,7 @@ export function AppShell() {
         {aiPanelOpen && (
           <>
             {isMobile && <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={() => setAiPanelOpen(false)} />}
-            <div className={`${isMobile ? "fixed inset-y-0 right-0 z-50 w-80" : "w-80 flex-shrink-0"} bg-[rgb(var(--sidebar-bg))] border-l border-[rgb(var(--border))] animate-slide-right`}>
+            <div className={`${isMobile ? "fixed top-0 right-0 z-50 w-full max-w-sm app-h" : "w-80 flex-shrink-0"} bg-[rgb(var(--sidebar-bg))] border-l border-[rgb(var(--border))] animate-slide-right`}>
               <AiPanel />
             </div>
           </>

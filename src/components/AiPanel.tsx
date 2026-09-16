@@ -17,13 +17,20 @@ const QUICK_ACTIONS = [
   { icon: "📚", label: "Flashcards", prompt: "Create Q&A flashcards from this note." },
 ];
 
+// Actions that write their result straight into the note
+const WRITE_ACTIONS = [
+  { icon: "✍️", label: "Write it for me", prompt: "Write the full content for this note based on the title and anything we discussed. Output ONLY the note content, no commentary.", mode: "replace" as const },
+  { icon: "✨", label: "Improve & apply", prompt: "Improve and polish this note's writing. Output ONLY the improved note content, no commentary.", mode: "replace" as const },
+  { icon: "➕", label: "Continue writing", prompt: "Continue writing this note from where it leaves off. Output ONLY the new text to append, no commentary.", mode: "append" as const },
+];
+
 export function AiPanel() {
   const {
     userEmail, aiConversations, currentConversationId, setCurrentConversationId,
     aiMessages, setAiMessages, addAiMessage, aiStreaming, setAiStreaming,
     addAiConversation, removeAiConversation,
     setAiPanelOpen, currentNoteId, notes, aiNoteContext,
-    soundEnabled, masterVolume, addToast,
+    soundEnabled, masterVolume, addToast, setNoteInsertRequest,
   } = useAppStore();
 
   const [input, setInput] = useState("");
@@ -47,9 +54,18 @@ export function AiPanel() {
     try { const res = await fetch(`/api/ai/conversations/${convoId}`); if (res.ok) setAiMessages(await res.json()); } catch { /* */ }
   }
 
-  async function sendMessage(text?: string) {
+  async function runWriteAction(prompt: string, mode: "append" | "replace") {
+    if (!currentNote) { addToast({ message: "Open a note first", type: "warning" }); return; }
+    const result = await sendMessage(prompt, true);
+    if (result) {
+      setNoteInsertRequest({ text: result, mode });
+      addToast({ message: mode === "replace" ? "Note updated ✨" : "Added to your note ✍️", type: "success" });
+    }
+  }
+
+  async function sendMessage(text?: string, returnResult = false): Promise<string | null> {
     const msg = text || input.trim();
-    if (!msg || aiStreaming) return;
+    if (!msg || aiStreaming) return null;
     if (soundEnabled) playClick(vol);
     setInput("");
 
@@ -61,7 +77,7 @@ export function AiPanel() {
       if (aiNoteContext && currentNote) body.noteContext = `Title: ${currentNote.title}\n\n${currentNote.content}`;
 
       const res = await fetch("/api/ai/chat", { method: "POST", headers, body: JSON.stringify(body) });
-      if (!res.ok) { const err = await res.json(); addToast({ message: err.error || "AI request failed", type: "error" }); setAiStreaming(false); return; }
+      if (!res.ok) { const err = await res.json(); addToast({ message: err.error || "AI request failed", type: "error" }); setAiStreaming(false); return null; }
 
       const data = await res.json();
       if (!currentConversationId && data.conversationId) {
@@ -70,8 +86,11 @@ export function AiPanel() {
       }
       addAiMessage(data.message);
       if (soundEnabled) playAiComplete(vol);
+      setAiStreaming(false);
+      return returnResult ? (data.message?.content ?? null) : null;
     } catch { addToast({ message: "Something went wrong. Try again.", type: "error" }); }
     setAiStreaming(false);
+    return null;
   }
 
   function handleQuickAction(prompt: string) {
@@ -153,6 +172,19 @@ export function AiPanel() {
             <p className="text-xs text-[rgb(var(--text-secondary))] mb-5 max-w-[220px] mx-auto leading-relaxed">
               I can help you write, study, brainstorm, or just chat. Try a quick action below!
             </p>
+            {currentNote && (
+              <div className="mb-3">
+                <p className="text-[10px] font-semibold text-[rgb(var(--text-secondary))] uppercase tracking-wider mb-1.5 text-left">Write into note</p>
+                <div className="grid grid-cols-1 gap-1.5">
+                  {WRITE_ACTIONS.map((a) => (
+                    <button key={a.label} onClick={() => runWriteAction(a.prompt, a.mode)} className="flex items-center gap-2.5 px-3 py-2.5 text-left text-xs rounded-xl bg-[rgb(var(--accent))]/10 text-[rgb(var(--accent))] hover:bg-[rgb(var(--accent))]/20 transition-all font-semibold">
+                      <span className="text-base">{a.icon}</span><span>{a.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <p className="text-[10px] font-semibold text-[rgb(var(--text-secondary))] uppercase tracking-wider mb-1.5 text-left">Ask about note</p>
             <div className="grid grid-cols-1 gap-1.5">
               {QUICK_ACTIONS.map((a) => (
                 <button key={a.label} onClick={() => handleQuickAction(a.prompt)} className="flex items-center gap-2.5 px-3 py-2.5 text-left text-xs rounded-xl border border-[rgb(var(--border))] hover:bg-[rgb(var(--bg))] hover:border-[rgb(var(--accent))]/30 transition-all font-medium">
@@ -168,9 +200,21 @@ export function AiPanel() {
             <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${msg.role === "user" ? "bg-gradient-to-r from-[rgb(var(--accent))] to-purple-500 text-white rounded-br-md" : "bg-[rgb(var(--bg))] border border-[rgb(var(--border))] rounded-bl-md"}`}>
               <div className="whitespace-pre-wrap break-words">{msg.content}</div>
               {msg.role === "assistant" && (
-                <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-[rgb(var(--border))]/30">
-                  <button onClick={() => copyMessage(msg.content)} className="text-[10px] text-[rgb(var(--text-secondary))] hover:text-[rgb(var(--text))] px-2 py-0.5 rounded-lg hover:bg-[rgb(var(--bg))] font-medium">📋 Copy</button>
-                  <button onClick={() => sendMessage("Regenerate your last response.")} className="text-[10px] text-[rgb(var(--text-secondary))] hover:text-[rgb(var(--text))] px-2 py-0.5 rounded-lg hover:bg-[rgb(var(--bg))] font-medium">🔄 Retry</button>
+                <div className="flex flex-wrap items-center gap-1 mt-2 pt-2 border-t border-[rgb(var(--border))]/30">
+                  <button onClick={() => copyMessage(msg.content)} className="text-[10px] text-[rgb(var(--text-secondary))] hover:text-[rgb(var(--text))] px-2 py-1 rounded-lg hover:bg-[rgb(var(--bg))] font-medium">📋 Copy</button>
+                  <button onClick={() => sendMessage("Regenerate your last response.")} className="text-[10px] text-[rgb(var(--text-secondary))] hover:text-[rgb(var(--text))] px-2 py-1 rounded-lg hover:bg-[rgb(var(--bg))] font-medium">🔄 Retry</button>
+                  {currentNote && (
+                    <>
+                      <button
+                        onClick={() => { setNoteInsertRequest({ text: msg.content, mode: "append" }); addToast({ message: "Added to your note ✍️", type: "success" }); }}
+                        className="text-[10px] text-[rgb(var(--accent))] hover:text-white hover:bg-[rgb(var(--accent))] px-2 py-1 rounded-lg font-semibold transition-colors"
+                      >📥 Add to Note</button>
+                      <button
+                        onClick={() => { if (confirm("Replace the whole note with this?")) { setNoteInsertRequest({ text: msg.content, mode: "replace" }); addToast({ message: "Note replaced", type: "success" }); } }}
+                        className="text-[10px] text-[rgb(var(--text-secondary))] hover:text-[rgb(var(--text))] px-2 py-1 rounded-lg hover:bg-[rgb(var(--bg))] font-medium"
+                      >♻️ Replace</button>
+                    </>
+                  )}
                 </div>
               )}
             </div>

@@ -44,6 +44,14 @@ body {
   overflow: hidden;
 }
 
+/* Keyboard-aware height: falls back to dvh when visualViewport is unsupported */
+.app-h { height: var(--app-h, 100dvh); }
+
+/* Stop iOS from zooming when focusing inputs */
+@media (max-width: 767px) {
+  input, textarea, select { font-size: 16px; }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }

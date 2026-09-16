@@ -90,6 +90,10 @@ interface AppState {
   // Save status
   saveStatus: "idle" | "saving" | "saved" | "error";
 
+  // AI -> Note bridge
+  noteInsertRequest: { text: string; mode: "append" | "replace" } | null;
+  setNoteInsertRequest: (r: { text: string; mode: "append" | "replace" } | null) => void;
+
   // Toasts
   toasts: Toast[];
 
@@ -165,6 +169,9 @@ export const useAppStore = create<AppState>((set) => ({
   masterVolume: 50,
 
   saveStatus: "idle",
+
+  noteInsertRequest: null,
+  setNoteInsertRequest: (r) => set({ noteInsertRequest: r }),
 
   toasts: [],
 
