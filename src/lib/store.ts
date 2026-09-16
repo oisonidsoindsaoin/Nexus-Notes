@@ -12,6 +12,7 @@ export interface Note {
   isDeleted: boolean;
   color: string | null;
   icon: string;
+  coverImage?: string | null;
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;

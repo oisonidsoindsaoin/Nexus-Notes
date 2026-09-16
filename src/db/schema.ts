@@ -23,6 +23,7 @@ export const notes = pgTable("notes", {
   isDeleted: boolean("is_deleted").default(false),
   color: text("color"),
   icon: text("icon").default("📝"),
+  coverImage: text("cover_image"),
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

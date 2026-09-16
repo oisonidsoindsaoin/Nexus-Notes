@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
         tags: body.tags || [],
         color: body.color || null,
         icon: body.icon || "📝",
+        coverImage: body.coverImage || null,
         isFavorite: false,
         isPinned: false,
         isDeleted: false,

@@ -325,9 +325,18 @@ export function Sidebar() {
                 style={note.color ? { borderLeftColor: note.color, borderLeftWidth: 3 } : undefined}
               >
                 <div className="flex items-start gap-2.5">
-                  <span className="text-base mt-0.5">{note.icon}</span>
+                  {note.coverImage ? (
+                    <div className="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 border border-[rgb(var(--border))]">
+                      <img src={note.coverImage} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <span className="text-base mt-0.5">{note.icon}</span>
+                  )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm truncate">{note.title || "Untitled"}</h3>
+                    <div className="flex items-center gap-1.5">
+                      {note.coverImage && <span className="text-xs">{note.icon}</span>}
+                      <h3 className="font-semibold text-sm truncate">{note.title || "Untitled"}</h3>
+                    </div>
                     <p className="text-xs text-[rgb(var(--text-secondary))] mt-0.5 line-clamp-2 leading-relaxed">
                       {note.content ? note.content.replace(/[#*\-\[\]]/g, "").substring(0, 80) : "Empty note"}
                     </p>

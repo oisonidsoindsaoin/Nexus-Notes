@@ -6,6 +6,7 @@ export async function POST() {
     const client = await pool.connect();
     try {
       await client.query("ALTER TABLE notes ADD COLUMN IF NOT EXISTS user_email TEXT NOT NULL DEFAULT ''");
+      await client.query("ALTER TABLE notes ADD COLUMN IF NOT EXISTS cover_image TEXT");
       await client.query("ALTER TABLE folders ADD COLUMN IF NOT EXISTS user_email TEXT NOT NULL DEFAULT ''");
       await client.query("ALTER TABLE ai_conversations ADD COLUMN IF NOT EXISTS user_email TEXT NOT NULL DEFAULT ''");
       await client.query("ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS user_email TEXT NOT NULL DEFAULT ''");
